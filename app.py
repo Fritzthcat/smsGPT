@@ -2,29 +2,38 @@ from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
 import os
 import openai
-openai.api_key = os.getenv("OPENAI_API_KEY")
+
 app = Flask(__name__)
+
+openai.api_key = os.environ.get("OPENAI_API_KEY")
 
 @app.route("/sms", methods=['POST'])
 def chatgpt():
-    """get incoming message"""
+    # Get incoming message
     inb_msg = request.form['Body'].lower()
     print(inb_msg)
-    response = openai.Completion.create(
-        model="gpt-3.5-turbo",
-        prompt=inb_msg,
-        max_tokens=3000,
-        temperature=0.7
-    )
-    """Respond to incoming calls with a simple text message."""
-    # Start our TwiML response
-    resp = MessagingResponse()
-    # Add a message
-    resp.message(response["choices"][0]["text"])
-    print(response["choices"][0]["text"])
 
-    return str(resp)
+    try:
+        # Generate response using OpenAI API
+        response = openai.Completion.create(
+            engine="text-davinci-002",
+            prompt=inb_msg,
+            max_tokens=3000,
+            temperature=0.7
+        )
+
+        # Send response message using Twilio API
+        resp = MessagingResponse()
+        resp.message(response["choices"][0]["text"])
+        print(response["choices"][0]["text"])
+        return str(resp)
+
+    except Exception as e:
+        # Handle API errors
+        print("Error:", e)
+        resp = MessagingResponse()
+        resp.message("Sorry, there was an error processing your request.")
+        return str(resp)
 
 if __name__ == "__main__":
     app.run(debug=True)
-
